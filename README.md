@@ -41,6 +41,22 @@ docker env contract:
 
 Seed configs for a llama-swap backed setup are in `config-seeds/`.
 
+## SSH straight into the TUI
+
+The container runs its own sshd, so an SSH client (Termius, anything)
+connects to the container directly — never to the host — and lands in the
+pi TUI. Quitting pi drops to a bash shell for maintenance; `exit`
+disconnects. The behavior lives in `/data/home/.bash_profile` (seeded on
+first boot, then yours to edit).
+
+- Auth is key-only by default: put your public key in
+  `/data/home/.ssh/authorized_keys`. Setting the `PI_SSH_PASSWORD` template
+  variable enables password login for the `pi` user.
+- Host keys persist in `/data/ssh`, so clients never see a key change across
+  image updates.
+- sshd is the only process that runs as root; logins, the agent, and the web
+  stack all run as the `pi` user (UID 99).
+
 ## Security model
 
 - The container plus the non-root user is the sandbox: pi itself has none,

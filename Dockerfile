@@ -9,8 +9,10 @@ FROM node:24-bookworm-slim
 
 # Agent working tools plus the toolchain node-pty (browser terminals) and any
 # node-gyp pi package need. procps for the entrypoint's process management.
+# openssh-server + gosu: direct SSH into the container (Termius lands in the
+# pi TUI); sshd runs as root, everything else drops to the pi user via gosu.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash ca-certificates curl git jq less nano openssh-client procps ripgrep tini unzip \
+    bash ca-certificates curl git gosu jq less nano openssh-client openssh-server procps ripgrep tini unzip \
     python3 make g++ \
  && rm -rf /var/lib/apt/lists/*
 
@@ -29,13 +31,30 @@ RUN npm install -g --omit=dev --include=peer --no-audit --no-fund \
  && npm cache clean --force \
  && test -x "$(command -v pi)" && test -x "$(command -v pi-web-server)" && test -x "$(command -v pi-web-sessiond)"
 
-# Unraid convention: nobody:users. The agent, the terminals, and every file it
-# writes run as this user; root never touches /data at runtime.
+# Unraid convention: nobody:users. The agent, the terminals, the SSH logins,
+# and every file written run as this user; root exists at runtime only for
+# sshd and the entrypoint's privilege drop.
 ARG PUID=99
 ARG PGID=100
 RUN groupadd -g ${PGID} -o pi 2>/dev/null || true \
  && useradd -u ${PUID} -g ${PGID} -o -m -s /bin/bash pi \
+ && usermod -d /data/home pi \
  && mkdir -p /data && chown ${PUID}:${PGID} /data
+
+# SSH: key auth against /data/home/.ssh/authorized_keys; password auth only
+# if the entrypoint is handed PI_SSH_PASSWORD. Host keys live in /data/ssh so
+# clients never see the key change across image updates.
+RUN printf '%s\n' \
+      'Port 22' \
+      'HostKey /data/ssh/ssh_host_ed25519_key' \
+      'HostKey /data/ssh/ssh_host_rsa_key' \
+      'PermitRootLogin no' \
+      'AllowUsers pi' \
+      'PubkeyAuthentication yes' \
+      'PasswordAuthentication no' \
+      'X11Forwarding no' \
+      'PrintMotd no' \
+      > /etc/ssh/sshd_config.d/pi.conf
 
 ENV HOME=/data/home \
     XDG_CONFIG_HOME=/data/config \
@@ -53,9 +72,8 @@ ENV HOME=/data/home \
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod 0755 /usr/local/bin/entrypoint.sh
 
-USER pi
 WORKDIR /data/workspace
-EXPOSE 8504
+EXPOSE 8504 22
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -fsS http://127.0.0.1:8504/api/pi-web/runtime >/dev/null || exit 1

@@ -3,17 +3,17 @@
   <Name>PI</Name>
   <Repository>ghcr.io/nphil/pi:latest</Repository>
   <Registry>https://github.com/nphil/pi/pkgs/container/pi</Registry>
-  <Network>bridge</Network>
-  <MyIP/>
+  <Network>br0</Network>
+  <MyIP>192.168.1.74</MyIP>
   <MyMAC/>
   <Shell>bash</Shell>
   <Privileged>false</Privileged>
   <Support>https://github.com/nphil/pi/issues</Support>
   <Project>https://pi.dev/</Project>
   <ReadMe>https://github.com/nphil/pi</ReadMe>
-  <Overview>pi coding agent (earendil-works/pi) merged with the PI WEB browser client (jmfederico/pi-web) in one container: chat, file diffs, git worktrees, and real interactive terminals in the browser, with a session daemon so agent runs survive closing the tab. Image is built and version-tracked automatically at github.com/nphil/pi: a scheduled workflow watches npm for new pi/pi-web releases, bumps versions.json, and pushes a fresh :latest to GHCR, so this app simply shows an update in the Docker tab when upstream releases; Apply Update recreates from this template. Runs as nobody:users with a single /data mount (pi state, pi-web state, config, and the agent workspace) so the container plus the non-root user is the sandbox. Internal only: LAN and tailnet, never exposed publicly. Models come from llama-swap at :9292; the declared contextWindow values in /data/pi-agent/models.json must track the -c values in llama-swap's config.</Overview>
+  <Overview>pi coding agent (earendil-works/pi) merged with the PI WEB browser client (jmfederico/pi-web) in one container: chat, file diffs, git worktrees, and real interactive terminals in the browser, with a session daemon so agent runs survive closing the tab. Lives at its own address 192.168.1.74 on br0 (reserve it in the UDM): web UI on :8504, and SSH on :22 straight into the pi TUI (quit pi to get bash; the login behavior is /data/home/.bash_profile, which is user data). SSH is key-only against /data/home/.ssh/authorized_keys unless PI_SSH_PASSWORD is set below; host keys persist in /data/ssh so clients never see them change. Image is built and version-tracked automatically at github.com/nphil/pi: a scheduled workflow watches npm for new pi/pi-web releases, bumps versions.json, and pushes a fresh :latest to GHCR, so this app simply shows an update in the Docker tab when upstream releases; Apply Update recreates from this template. Runs as nobody:users (sshd is the only root process) with a single /data mount. Internal only: LAN and tailnet, never exposed publicly. Note: on br0 the exposure watch's docker-port source cannot see this container's doors. Models come from llama-swap at :9292; the declared contextWindow values in /data/pi-agent/models.json must track the -c values in llama-swap's config.</Overview>
   <Category>Productivity: AI:</Category>
-  <WebUI>http://[IP]:[PORT:8504]/</WebUI>
+  <WebUI>http://192.168.1.74:8504/</WebUI>
   <TemplateURL/>
   <Icon>http://192.168.1.69:3009/appicons/pi-web.png</Icon>
   <ExtraParams>--restart unless-stopped</ExtraParams>
@@ -22,8 +22,8 @@
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Requires>llama-swap up on :9292 for models. This template is the canonical container definition; Apply Update recreates from it.</Requires>
-  <Config Name="WebUI Port" Target="8504" Default="8504" Mode="tcp" Description="PI WEB has no built-in auth: keep this LAN/tailnet internal, never forwarded or proxied publicly." Type="Port" Display="always" Required="true" Mask="false">8504</Config>
-  <Config Name="Data" Target="/data" Default="/mnt/nvme/appdata/pi" Mode="rw" Description="Everything: pi state (pi-agent/), pi-web state (pi-web/), config (config/), home (home/), and the agent workspace (workspace/)" Type="Path" Display="always" Required="true" Mask="false">/mnt/nvme/appdata/pi</Config>
+  <Requires>llama-swap up on :9292 for models. This template is the canonical container definition; Apply Update recreates from it. Reserve 192.168.1.74 in the UDM's DHCP so nothing else takes it.</Requires>
+  <Config Name="Data" Target="/data" Default="/mnt/nvme/appdata/pi" Mode="rw" Description="Everything: pi state (pi-agent/), pi-web state (pi-web/), config (config/), home + SSH authorized_keys (home/), SSH host keys (ssh/), and the agent workspace (workspace/)" Type="Path" Display="always" Required="true" Mask="false">/mnt/nvme/appdata/pi</Config>
+  <Config Name="PI_SSH_PASSWORD" Target="PI_SSH_PASSWORD" Default="" Mode="" Description="Optional. Set to allow SSH password login for the pi user; empty keeps SSH key-only (authorized_keys in /data/home/.ssh)." Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
 </Container>
