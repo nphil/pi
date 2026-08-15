@@ -10,7 +10,8 @@ alive after the tab closes.
 
 ## How updates work
 
-Fully automatic, three stages:
+The image tracks upstream automatically; applying it stays a deliberate
+click in the Unraid Docker tab, like any other container:
 
 1. `.github/workflows/watch-upstream.yml` polls npm every six hours for new
    releases of `@earendil-works/pi-coding-agent` and `@jmfederico/pi-web`.
@@ -18,12 +19,12 @@ Fully automatic, three stages:
 2. That triggers `build.yml`, which builds the image with both versions
    pinned as build args and pushes `:latest` plus an immutable
    `:pi<ver>-web<ver>` tag to GHCR.
-3. On the server, `unraid/update-pi.sh` (User Scripts, daily cron) pulls
-   `:latest` and recreates the container when the digest moves.
+3. Unraid's Check for Updates sees the moved `:latest` digest and shows the
+   update badge on the PI app; Apply Update recreates from the template.
 
-To pin or roll back: edit `versions.json` by hand (the watcher will not
-downgrade it until upstream moves past), or point the container at an
-immutable tag.
+The template is the single canonical container definition. To pin or roll
+back: edit `versions.json` by hand (the watcher will not downgrade it until
+upstream moves past), or point the template at an immutable tag.
 
 ## Layout inside the container
 
@@ -52,6 +53,6 @@ Seed configs for a llama-swap backed setup are in `config-seeds/`.
 ## Unraid
 
 `unraid/my-PI.xml` is the dockerMan template (app name **PI**, port 8504,
-one `/data` path mapping). `unraid/update-pi.sh` is the auto-update user
-script; it recreates with its own canonical args, so keep it and the
-template in sync when changing either.
+one `/data` path mapping) and the only place the container's run arguments
+live: dockerMan recreates from the XML on every Apply Update, so any change
+that matters must land there.

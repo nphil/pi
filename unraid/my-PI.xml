@@ -11,7 +11,7 @@
   <Support>https://github.com/nphil/pi/issues</Support>
   <Project>https://pi.dev/</Project>
   <ReadMe>https://github.com/nphil/pi</ReadMe>
-  <Overview>pi coding agent (earendil-works/pi) merged with the PI WEB browser client (jmfederico/pi-web) in one container: chat, file diffs, git worktrees, and real interactive terminals in the browser, with a session daemon so agent runs survive closing the tab. Image is built and version-tracked automatically at github.com/nphil/pi: a scheduled workflow watches npm for new pi/pi-web releases, bumps versions.json, and pushes a fresh :latest to GHCR; the Update PI user script applies it daily on the box. Runs as nobody:users with a single /data mount (pi state, pi-web state, config, and the agent workspace) so the container plus the non-root user is the sandbox. Internal only: LAN and tailnet, never exposed publicly. Models come from llama-swap at :9292; the declared contextWindow values in /data/pi-agent/models.json must track the -c values in llama-swap's config.</Overview>
+  <Overview>pi coding agent (earendil-works/pi) merged with the PI WEB browser client (jmfederico/pi-web) in one container: chat, file diffs, git worktrees, and real interactive terminals in the browser, with a session daemon so agent runs survive closing the tab. Image is built and version-tracked automatically at github.com/nphil/pi: a scheduled workflow watches npm for new pi/pi-web releases, bumps versions.json, and pushes a fresh :latest to GHCR, so this app simply shows an update in the Docker tab when upstream releases; Apply Update recreates from this template. Runs as nobody:users with a single /data mount (pi state, pi-web state, config, and the agent workspace) so the container plus the non-root user is the sandbox. Internal only: LAN and tailnet, never exposed publicly. Models come from llama-swap at :9292; the declared contextWindow values in /data/pi-agent/models.json must track the -c values in llama-swap's config.</Overview>
   <Category>Productivity: AI:</Category>
   <WebUI>http://[IP]:[PORT:8504]/</WebUI>
   <TemplateURL/>
@@ -22,7 +22,7 @@
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Requires>llama-swap up on :9292 for models. Keep this template in sync with unraid/update-pi.sh in the nphil/pi repo; the auto-update script recreates with its own args.</Requires>
+  <Requires>llama-swap up on :9292 for models. This template is the canonical container definition; Apply Update recreates from it.</Requires>
   <Config Name="WebUI Port" Target="8504" Default="8504" Mode="tcp" Description="PI WEB has no built-in auth: keep this LAN/tailnet internal, never forwarded or proxied publicly." Type="Port" Display="always" Required="true" Mask="false">8504</Config>
   <Config Name="Data" Target="/data" Default="/mnt/nvme/appdata/pi" Mode="rw" Description="Everything: pi state (pi-agent/), pi-web state (pi-web/), config (config/), home (home/), and the agent workspace (workspace/)" Type="Path" Display="always" Required="true" Mask="false">/mnt/nvme/appdata/pi</Config>
   <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
