@@ -1,0 +1,55 @@
+name: watch-upstream
+
+# Every six hours: ask npm for the latest pi and pi-web, and if either moved,
+# bump versions.json and push. The push triggers build-and-push, so a new
+# ghcr.io/nphil/pi:latest appears within hours of any upstream release.
+# The box then picks it up on its own schedule (see unraid/update-pi.sh).
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against npm
+        id: check
+        run: |
+          set -e
+          cur_pi=$(jq -r .pi versions.json)
+          cur_web=$(jq -r '.["pi-web"]' versions.json)
+          new_pi=$(curl -fsS https://registry.npmjs.org/@earendil-works/pi-coding-agent/latest | jq -r .version)
+          new_web=$(curl -fsS https://registry.npmjs.org/@jmfederico/pi-web/latest | jq -r .version)
+          echo "pi: $cur_pi -> $new_pi ; pi-web: $cur_web -> $new_web"
+          if [ "$cur_pi" = "$new_pi" ] && [ "$cur_web" = "$new_web" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            jq -n --arg pi "$new_pi" --arg web "$new_web" '{"pi": $pi, "pi-web": $web}' > versions.json
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "msg=pi $cur_pi -> $new_pi, pi-web $cur_web -> $new_web" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit bump
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "pi-version-watch"
+          git config user.email "actions@users.noreply.github.com"
+          git add versions.json
+          git commit -m "Track upstream: ${{ steps.check.outputs.msg }}"
+          git push
+
+      # A push made with GITHUB_TOKEN does not fire other workflows'
+      # push triggers (recursion guard), so dispatch the build directly.
+      - name: Trigger build
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml --ref main -R "$GITHUB_REPOSITORY"

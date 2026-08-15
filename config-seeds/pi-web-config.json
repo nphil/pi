@@ -1,0 +1,6 @@
+{
+  "pathAccess": {
+    "allowedPaths": ["/data/workspace"]
+  },
+  "spawnSessions": true
+}
