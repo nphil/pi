@@ -19,12 +19,15 @@ ARG PI_WEB_VERSION
 
 # pi-web first with peer deps (pulls a compatible pi), then pin pi explicitly
 # so versions.json is the single source of truth for both.
+# No smoke-test invocations here: pi-web-server has no exiting --help and
+# would serve forever inside the RUN layer (this hung the first CI build for
+# half an hour). Binary presence is verified without executing anything.
 RUN npm install -g --omit=dev --include=peer --no-audit --no-fund \
       "@jmfederico/pi-web@${PI_WEB_VERSION}" \
  && npm install -g --ignore-scripts --no-audit --no-fund \
       "@earendil-works/pi-coding-agent@${PI_VERSION}" \
  && npm cache clean --force \
- && pi --version && pi-web-server --help >/dev/null 2>&1 || true
+ && test -x "$(command -v pi)" && test -x "$(command -v pi-web-server)" && test -x "$(command -v pi-web-sessiond)"
 
 # Unraid convention: nobody:users. The agent, the terminals, and every file it
 # writes run as this user; root never touches /data at runtime.
