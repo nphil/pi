@@ -22,12 +22,16 @@ if [ -n "${PI_SSH_PASSWORD:-}" ]; then
 fi
 
 # SSH sessions start with a fresh environment; hand them the pi variables so
-# the TUI shares state with the web sessions.
+# the TUI shares state with the web sessions, and the persistence paths so
+# their installs land in /data/home like everything else.
 {
   echo "export PI_CODING_AGENT_DIR=${PI_CODING_AGENT_DIR}"
   echo "export PI_WEB_SESSIOND_SOCKET=${SOCK}"
   echo "export PI_TELEMETRY=${PI_TELEMETRY:-0}"
   echo "export PI_SKIP_VERSION_CHECK=${PI_SKIP_VERSION_CHECK:-1}"
+  echo "export NPM_CONFIG_PREFIX=${NPM_CONFIG_PREFIX:-/data/home/.npm-global}"
+  echo "export PIP_BREAK_SYSTEM_PACKAGES=1"
+  echo 'export PATH=/data/home/.npm-global/bin:/data/home/.local/bin:$PATH'
 } > /etc/profile.d/00-pi-env.sh
 
 # First boot only: SSH logins land in the pi TUI, and quitting pi drops to

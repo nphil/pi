@@ -7,14 +7,30 @@
 # versions.json via build args; CI bumps them as upstream releases.
 FROM node:24-bookworm-slim
 
-# Agent working tools plus the toolchain node-pty (browser terminals) and any
-# node-gyp pi package need. procps for the entrypoint's process management.
-# openssh-server + gosu: direct SSH into the container (Termius lands in the
-# pi TUI); sshd runs as root, everything else drops to the pi user via gosu.
+# The agentic-coding toolbox: enough for real development work out of the box
+# (python + venv/pipx, node is the base image, build toolchain for node-gyp
+# and native wheels, git + gh, ripgrep/fd/jq/sqlite3 and friends), plus
+# openssh-server + gosu for direct SSH into the container and tini as PID 1.
+# System packages the agents need beyond this belong HERE, in the image: the
+# pi user has no root and no sudo on purpose, so an apt wish is a one-line
+# commit that CI turns into the next image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash ca-certificates curl git gosu jq less nano openssh-client openssh-server procps ripgrep tini unzip \
-    python3 make g++ \
+    bash ca-certificates curl file git gosu htop jq less nano openssh-client openssh-server \
+    procps rsync ripgrep fd-find sqlite3 tini tree unzip wget xz-utils zip \
+    python3 python3-pip python3-venv pipx \
+    make g++ pkg-config \
+ && ln -s "$(command -v fdfind)" /usr/local/bin/fd \
  && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI from the official repo, and uv (the modern python package
+# manager agents reach for first).
+RUN mkdir -p -m 755 /etc/apt/keyrings \
+ && wget -qO /etc/apt/keyrings/githubcli-archive-keyring.gpg https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+ && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+ && apt-get update && apt-get install -y --no-install-recommends gh \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 ARG PI_VERSION
 ARG PI_WEB_VERSION
@@ -56,6 +72,10 @@ RUN printf '%s\n' \
       'PrintMotd no' \
       > /etc/ssh/sshd_config.d/pi.conf
 
+# User-level installs persist: npm -g lands in /data/home/.npm-global, pip
+# and uv and pipx in /data/home/.local — all inside the /data volume, so what
+# agents install survives container recreates. System-level additions belong
+# in the apt layer above.
 ENV HOME=/data/home \
     XDG_CONFIG_HOME=/data/config \
     PI_WEB_HOST=0.0.0.0 \
@@ -66,6 +86,9 @@ ENV HOME=/data/home \
     PI_TELEMETRY=0 \
     PI_SKIP_VERSION_CHECK=1 \
     NPM_CONFIG_UPDATE_NOTIFIER=false \
+    NPM_CONFIG_PREFIX=/data/home/.npm-global \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PATH=/data/home/.npm-global/bin:/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     SHELL=/bin/bash \
     TERM=xterm-256color
 

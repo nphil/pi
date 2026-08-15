@@ -41,6 +41,25 @@ docker env contract:
 
 Seed configs for a llama-swap backed setup are in `config-seeds/`.
 
+## What persists, and where installs go
+
+The `/data` volume is the whole persistent world (on the Unraid host it is a
+ZFS dataset with a 20G quota, so agents cannot fill the pool). The rules:
+
+- **User-level installs persist automatically**: `npm -g` is prefixed to
+  `/data/home/.npm-global`, `pip` / `uv tool` / `pipx` land in
+  `/data/home/.local`, and both are on PATH for web terminals, SSH sessions,
+  and agent bash alike. Python projects should use venvs (`uv venv`) in the
+  workspace.
+- **System-level packages do not persist** and cannot be installed at
+  runtime: the `pi` user has no root and no sudo, deliberately. Add apt
+  packages to the Dockerfile's toolbox layer instead — CI builds the image,
+  and the update shows up in the Unraid Docker tab like any other.
+
+The image ships a real toolbox out of the box: python3 + venv + pip + pipx +
+uv, node (base image), make/g++/pkg-config for native builds, git and the
+GitHub CLI, ripgrep, fd, jq, sqlite3, rsync, tree, htop, and friends.
+
 ## SSH straight into the TUI
 
 The container runs its own sshd, so an SSH client (Termius, anything)
