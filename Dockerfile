@@ -16,7 +16,7 @@ FROM node:24-bookworm-slim
 # commit that CI turns into the next image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates curl file git gosu htop jq less nano openssh-client openssh-server \
-    procps rsync ripgrep fd-find sqlite3 tini tree unzip wget xz-utils zip \
+    procps rsync ripgrep fd-find sqlite3 sudo tini tree unzip wget xz-utils zip \
     python3 python3-pip python3-venv pipx \
     make g++ pkg-config \
  && ln -s "$(command -v fdfind)" /usr/local/bin/fd \
@@ -55,7 +55,9 @@ ARG PGID=100
 RUN groupadd -g ${PGID} -o pi 2>/dev/null || true \
  && useradd -u ${PUID} -g ${PGID} -o -m -s /bin/bash pi \
  && usermod -d /data/home pi \
- && mkdir -p /data && chown ${PUID}:${PGID} /data
+ && mkdir -p /data && chown ${PUID}:${PGID} /data \
+ && echo "pi ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/pi \
+ && chmod 0440 /etc/sudoers.d/pi
 
 # SSH: key auth against /data/home/.ssh/authorized_keys; password auth only
 # if the entrypoint is handed PI_SSH_PASSWORD. Host keys live in /data/ssh so

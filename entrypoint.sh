@@ -52,6 +52,28 @@ PROFILE
   chown pi:users /data/home/.bash_profile
 fi
 
+# First boot only: seed the re-provision hook. Agents (and you) append apt
+# installs and other root-level setup here; it runs as root on every container
+# start, so overlay-level changes come back after image updates.
+if [ ! -f /data/on-boot.sh ]; then
+  cat > /data/on-boot.sh <<'ONBOOT'
+#!/bin/bash
+# Runs as root at every container start, AFTER the image's own setup.
+# Put apt installs and other system-level provisioning here so they survive
+# image updates (the container filesystem outside /data resets on every
+# update). Example:
+#   apt-get update && apt-get install -y --no-install-recommends imagemagick
+# Tools that prove durable belong in the Dockerfile at github.com/nphil/pi.
+ONBOOT
+  chmod +x /data/on-boot.sh
+  chown pi:users /data/on-boot.sh
+fi
+
+if [ -x /data/on-boot.sh ]; then
+  echo "[entrypoint] running /data/on-boot.sh"
+  /data/on-boot.sh || echo "[entrypoint] on-boot.sh exited nonzero; continuing"
+fi
+
 rm -f "$SOCK" 2>/dev/null || true
 
 /usr/sbin/sshd -D -e &

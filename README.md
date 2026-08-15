@@ -51,10 +51,15 @@ ZFS dataset with a 20G quota, so agents cannot fill the pool). The rules:
   `/data/home/.local`, and both are on PATH for web terminals, SSH sessions,
   and agent bash alike. Python projects should use venvs (`uv venv`) in the
   workspace.
-- **System-level packages do not persist** and cannot be installed at
-  runtime: the `pi` user has no root and no sudo, deliberately. Add apt
-  packages to the Dockerfile's toolbox layer instead — CI builds the image,
-  and the update shows up in the Unraid Docker tab like any other.
+- **The pi user has passwordless sudo**, so agents can `sudo apt install`
+  and do any root-level setup they need. The container is the wall: no
+  docker socket, not privileged, one quota'd mount, internal network only.
+- **System-level changes live in the overlay and reset on every image
+  update.** The bridge is `/data/on-boot.sh`: it runs as root on every
+  container start, so apt installs appended there re-apply themselves after
+  updates. Tools that prove durable graduate to the Dockerfile's toolbox
+  layer — CI builds the image and the update shows up in the Unraid Docker
+  tab like any other.
 
 The image ships a real toolbox out of the box: python3 + venv + pip + pipx +
 uv, node (base image), make/g++/pkg-config for native builds, git and the
