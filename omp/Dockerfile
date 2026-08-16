@@ -92,7 +92,10 @@ RUN chmod 0755 /usr/local/bin/entrypoint.sh
 WORKDIR /data/workspace
 EXPOSE 30177 22
 
+# The UI sits behind Basic Auth, so an unauthenticated probe gets 401 from a
+# perfectly healthy server: 401 is proof of life here, only a refused
+# connection or a 5xx means trouble.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD curl -fsS -o /dev/null http://127.0.0.1:30177/ || exit 1
+  CMD sh -c 'c=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:30177/) && { [ "$c" = "200" ] || [ "$c" = "401" ]; }' || exit 1
 
 ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
