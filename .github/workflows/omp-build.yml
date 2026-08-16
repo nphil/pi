@@ -1,0 +1,51 @@
+name: omp-build-and-push
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - omp/**
+      - .github/workflows/omp-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned versions
+        id: versions
+        run: |
+          echo "omp=$(jq -r .omp omp/versions.json)" >> "$GITHUB_OUTPUT"
+          echo "ompweb=$(jq -r .ompweb omp/versions.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./omp
+          push: true
+          build-args: |
+            OMP_VERSION=${{ steps.versions.outputs.omp }}
+            OMPWEB_VERSION=${{ steps.versions.outputs.ompweb }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/omp:latest
+            ghcr.io/${{ github.repository_owner }}/omp:omp${{ steps.versions.outputs.omp }}-web${{ steps.versions.outputs.ompweb }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=oh-my-pi coding agent + ompweb browser UI for Unraid
+          cache-from: type=gha,scope=omp
+          cache-to: type=gha,mode=max,scope=omp

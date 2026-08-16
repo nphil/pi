@@ -1,4 +1,12 @@
-# PI
+# PI and OMP
+
+Two self-hosted coding-agent containers for Unraid, built and version-tracked
+here. **PI** is pi + PI WEB (this document). **OMP** is the oh-my-pi fork with
+subagents and model roles, plus the ompweb browser UI, and lives in
+[](./omp) with its own image, template and README. They are siblings:
+separate images, addresses, state and quotas.
+
+## PI
 
 [pi coding agent](https://pi.dev/) (earendil-works/pi) merged with the
 [PI WEB](https://pi-web.dev/) browser client (jmfederico/pi-web) into one

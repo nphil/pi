@@ -1,0 +1,49 @@
+{
+  "providers": {
+    "llama-swap": {
+      "baseUrl": "http://192.168.1.69:9292/v1",
+      "api": "openai-completions",
+      "apiKey": "llama-swap",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "supportsUsageInStreaming": true,
+        "maxTokensField": "max_tokens"
+      },
+      "models": [
+        {
+          "id": "gemma4-26b",
+          "name": "Gemma 4 26B (fast big, ~50 tok/s)",
+          "input": ["text", "image"],
+          "contextWindow": 16384,
+          "maxTokens": 4096,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        },
+        {
+          "id": "qwen3.8-27b",
+          "name": "Qwen 3.8 27B (smart big, ~13 tok/s)",
+          "reasoning": true,
+          "contextWindow": 24576,
+          "maxTokens": 4096,
+          "compat": { "thinkingFormat": "qwen-chat-template" },
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        },
+        {
+          "id": "gemma4-e4b",
+          "name": "Gemma 4 E4B (resident, no eviction)",
+          "input": ["text", "image"],
+          "contextWindow": 16384,
+          "maxTokens": 4096,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        },
+        {
+          "id": "qwen3.5-4b",
+          "name": "Qwen 3.5 4B (resident, quick jobs)",
+          "contextWindow": 8192,
+          "maxTokens": 2048,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        }
+      ]
+    }
+  }
+}

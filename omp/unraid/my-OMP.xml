@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>OMP</Name>
+  <Repository>ghcr.io/nphil/omp:latest</Repository>
+  <Registry>https://github.com/nphil/pi/pkgs/container/omp</Registry>
+  <Network>br0</Network>
+  <MyIP>192.168.1.75</MyIP>
+  <MyMAC/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/nphil/pi/issues</Support>
+  <Project>https://omp.sh/</Project>
+  <ReadMe>https://github.com/nphil/pi/blob/main/omp/README.md</ReadMe>
+  <Overview>oh-my-pi (omp), the subagent-and-model-roles fork of pi, with the ompweb browser UI. A SIBLING of the PI app, not a replacement: PI (pi + PI WEB) keeps running untouched at 192.168.1.74 and the two agents share nothing but the llama-swap endpoint. Lives at its own address 192.168.1.75 on br0 (reserve it in the UDM): web UI on :30177, and SSH on :22 straight into the omp TUI (quit omp to get bash; the login behavior is /data/home/.bash_profile, which is user data). SSH is key-only against /data/home/.ssh/authorized_keys unless OMP_SSH_PASSWORD is set below; host keys persist in /data/ssh. The web UI has real HTTP Basic Auth: set OMP_WEB_PASSWORD to require it (username is always omp). Why two runtimes in one image: omp is Bun-only and ships raw TypeScript, ompweb is a Node/Next app that spawns the omp binary as a subprocess, so their versions move independently and neither can break the other. Image is version-tracked automatically at github.com/nphil/pi (omp/ directory): a scheduled workflow watches npm for omp and ompweb releases and pushes a fresh :latest to GHCR, so this app shows an ordinary update in the Docker tab; Apply Update recreates from this template. Runs as nobody:users with passwordless sudo; the container is the sandbox (no docker socket, not privileged, one quota-capped mount), and root-level setup that must survive updates goes in /data/on-boot.sh. Internal only: LAN and tailnet, never exposed publicly. Model roles live in /data/home/.omp/agent/config.yml; providers in models.yml (seeded from models.json on first run). Log in to Claude and ChatGPT with /login inside the TUI, then point the default, slow and plan roles at them.</Overview>
+  <Category>Productivity: AI:</Category>
+  <WebUI>http://192.168.1.75:30177/</WebUI>
+  <TemplateURL/>
+  <Icon>http://192.168.1.69:3009/appicons/omp.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>llama-swap on :9292 for the local worker roles. Reserve 192.168.1.75 in the UDM's DHCP so nothing else takes it. This template is the canonical container definition; Apply Update recreates from it.</Requires>
+  <Config Name="Data" Target="/data" Default="/mnt/nvme/appdata/omp" Mode="rw" Description="Everything: omp state (home/.omp/agent: models.yml, config.yml, auth.json, sessions), home + SSH authorized_keys, SSH host keys (ssh/), and the agent workspace (workspace/)" Type="Path" Display="always" Required="true" Mask="false">/mnt/nvme/appdata/omp</Config>
+  <Config Name="OMP_WEB_PASSWORD" Target="OMP_WEB_PASSWORD" Default="" Mode="" Description="Optional but recommended. Requires HTTP Basic Auth on the web UI and every API endpoint; the username is always omp. Empty means no authentication." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="OMP_SSH_PASSWORD" Target="OMP_SSH_PASSWORD" Default="" Mode="" Description="Optional. Set to allow SSH password login for the omp user; empty keeps SSH key-only (authorized_keys in /data/home/.ssh)." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+</Container>

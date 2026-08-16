@@ -1,0 +1,27 @@
+# omp role assignments. Roles are how omp routes work automatically: it picks
+# the role, you decide which model each role means.
+#
+# Cloud-first, locals as workers. The reasoning: omp's system prompt plus tool
+# prompts run to roughly 26KB (~6k tokens) before a single file is read, which
+# is a third of gemma4-26b's 16k window. The local models earn their keep as
+# cheap, parallel, always-available workers rather than as the main driver.
+#
+# AFTER YOU LOG IN (run `omp` over SSH, then /login for ChatGPT and Claude),
+# uncomment the cloud lines below and comment out the local fallbacks. Model
+# ids come from `/model` once a provider is authenticated.
+modelRoles:
+  # --- the thinking roles: cloud once you have logged in -------------------
+  # default: anthropic/claude-...      # main driver
+  # slow: anthropic/claude-...         # deep reasoning
+  # plan: anthropic/claude-...         # architecture
+  # advisor inherits slow, tiny inherits smol, so both follow automatically.
+  default: llama-swap/qwen3.8-27b
+  slow: llama-swap/qwen3.8-27b
+  plan: llama-swap/qwen3.8-27b
+
+  # --- the worker roles: always local, free, and fast ----------------------
+  smol: llama-swap/gemma4-e4b     # background: titles, memory, classification
+  tiny: llama-swap/qwen3.5-4b     # the cheapest jobs
+  task: llama-swap/gemma4-26b     # subagent fan-out, ~50 tok/s
+  commit: llama-swap/gemma4-e4b   # commit messages
+  vision: llama-swap/gemma4-26b   # both gemma models are vision capable

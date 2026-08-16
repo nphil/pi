@@ -1,0 +1,59 @@
+name: omp-watch-upstream
+
+# Same contract as the pi watcher: poll npm, bump omp/versions.json when
+# either project releases, and dispatch the build. The Unraid Docker tab then
+# shows an ordinary update badge on the OMP app.
+#
+# omp releases 2-3 times a day, so this deliberately tracks `latest` rather
+# than every version; a bump that turns out bad is rolled back by editing
+# versions.json to a known-good pair (the immutable ompX-webY tag also stays
+# on GHCR for that).
+
+on:
+  schedule:
+    - cron: "42 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against npm
+        id: check
+        run: |
+          set -e
+          cur_omp=$(jq -r .omp omp/versions.json)
+          cur_web=$(jq -r .ompweb omp/versions.json)
+          new_omp=$(curl -fsS https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/latest | jq -r .version)
+          new_web=$(curl -fsS https://registry.npmjs.org/@kahme247/ompweb/latest | jq -r .version)
+          echo "omp: $cur_omp -> $new_omp ; ompweb: $cur_web -> $new_web"
+          if [ "$cur_omp" = "$new_omp" ] && [ "$cur_web" = "$new_web" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            jq -n --arg omp "$new_omp" --arg web "$new_web" '{"omp": $omp, "ompweb": $web}' > omp/versions.json
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "msg=omp $cur_omp -> $new_omp, ompweb $cur_web -> $new_web" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit bump
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "omp-version-watch"
+          git config user.email "actions@users.noreply.github.com"
+          git add omp/versions.json
+          git commit -m "Track upstream: ${{ steps.check.outputs.msg }}"
+          git push
+
+      # A push made with GITHUB_TOKEN does not fire other workflows'
+      # push triggers (recursion guard), so dispatch the build directly.
+      - name: Trigger build
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run omp-build.yml --ref main -R "$GITHUB_REPOSITORY"
