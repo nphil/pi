@@ -45,10 +45,45 @@ roles are meant for Claude or ChatGPT once you log in, while `smol`, `tiny`,
 budget — omp's system prompt plus tool prompts are roughly 26KB (~6k tokens)
 before a file is read, which is a third of a 16k local window.
 
-Log in from the TUI over SSH: run `omp`, then `/login`, and pick ChatGPT
-Plus/Pro or Claude Pro/Max. **Note:** third-party harness usage of a Claude
-Pro/Max subscription is billed per token as *extra usage*, not against plan
-limits.
+### Logging in to Claude and ChatGPT (the OAuth callback trap)
+
+`/login` starts a callback server on **loopback inside the container** and the
+provider redirects your browser to `http://localhost:<port>/callback`. Your
+browser is on a different machine, where `localhost` is *your laptop* — so the
+callback lands nowhere and the login appears to hang or error. Ports are fixed
+per provider (`src/registry/oauth/*.ts`):
+
+| Provider | Callback port |
+| --- | --- |
+| Claude Pro/Max (anthropic) | 54545 |
+| ChatGPT Plus/Pro (openai-codex) | 1455 |
+| Google Gemini CLI | 8085 |
+| Google Antigravity | 51121 |
+
+Two ways through, both supported:
+
+**1. Forward the port over SSH (cleanest).** Connect with the callback port
+tunnelled, then run `/login` in that session:
+
+```bash
+ssh -L 54545:127.0.0.1:54545 -L 1455:127.0.0.1:1455 omp@192.168.1.75
+```
+
+Your browser's `localhost:54545` now reaches the container and the callback
+completes normally. In Termius, add these under the host's Port Forwarding as
+local rules. `AllowTcpForwarding` is on in the image's sshd config, and the
+redirect host cannot be changed instead — providers validate the registered
+`http://localhost:<port>/callback` exactly.
+
+**2. Paste the redirect URL (no setup).** Run `/login` normally, complete the
+sign-in in the browser, and let the final redirect fail. Copy that dead URL
+out of the address bar — it carries `?code=...&state=...` — and paste it at
+omp's prompt. The flow offers this explicitly: *"If the browser cannot reach
+this machine, paste the final redirect URL or authorization code when
+prompted."*
+
+**Note:** third-party harness usage of a Claude Pro/Max subscription is billed
+per token as *extra usage*, not against plan limits.
 
 ## Updates
 
