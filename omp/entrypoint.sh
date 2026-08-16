@@ -1,8 +1,15 @@
 #!/bin/bash
-# Runs as root: starts sshd (the only root process) and drops ompweb to the
+# Runs as root: starts sshd (the only root process) and drops Cody to the
 # omp user via gosu. tini is PID 1; if either dies we exit so the restart
 # policy brings the pair back.
 set -e
+
+# Cody refuses a non-loopback bind without a password (username: cody). Fail
+# loudly here instead of leaving a silent restart loop to diagnose.
+if [ -z "${CODY_PASSWORD:-${OMP_WEB_PASSWORD:-}}" ] && [ "${CODY_ALLOW_NO_AUTH:-}" != "1" ]; then
+  echo "[entrypoint] CODY_PASSWORD is not set; Cody will refuse to listen on ${CODY_HOSTNAME:-0.0.0.0}. Set it in the template." >&2
+  exit 1
+fi
 
 mkdir -p /data/home /data/config /data/workspace /data/ssh /data/home/.omp/agent /run/sshd
 chown omp:users /data /data/home /data/config /data/workspace /data/home/.omp /data/home/.omp/agent
@@ -31,7 +38,7 @@ fi
 
 # SSH sessions get a fresh environment; hand them what the TUI needs.
 {
-  echo "export OMP_WEB_OMP_BIN=${OMP_WEB_OMP_BIN:-/usr/local/bin/omp}"
+  echo "export CODY_OMP_BIN=${CODY_OMP_BIN:-/usr/local/bin/omp}"
   echo "export NPM_CONFIG_PREFIX=${NPM_CONFIG_PREFIX:-/data/home/.npm-global}"
   echo "export PIP_BREAK_SYSTEM_PACKAGES=1"
   echo 'export PATH=/data/home/.npm-global/bin:/data/home/.local/bin:$PATH'
@@ -72,7 +79,7 @@ fi
 /usr/sbin/sshd -D -e &
 SSHD_PID=$!
 
-gosu omp env HOME=/data/home ompweb --hostname "${OMP_WEB_HOSTNAME:-0.0.0.0}" --port "${OMP_WEB_PORT:-30177}" --no-open &
+gosu omp env HOME=/data/home cody -H "${CODY_HOSTNAME:-0.0.0.0}" -p "${CODY_PORT:-30177}" --no-open &
 WEB_PID=$!
 
 trap 'kill -TERM $SSHD_PID $WEB_PID 2>/dev/null; wait' TERM INT

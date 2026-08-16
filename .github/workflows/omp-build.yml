@@ -22,7 +22,9 @@ jobs:
         id: versions
         run: |
           echo "omp=$(jq -r .omp omp/versions.json)" >> "$GITHUB_OUTPUT"
-          echo "ompweb=$(jq -r .ompweb omp/versions.json)" >> "$GITHUB_OUTPUT"
+          cody=$(jq -r .cody omp/versions.json)
+          echo "cody=$cody" >> "$GITHUB_OUTPUT"
+          echo "cody_short=${cody:0:7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -40,12 +42,12 @@ jobs:
           push: true
           build-args: |
             OMP_VERSION=${{ steps.versions.outputs.omp }}
-            OMPWEB_VERSION=${{ steps.versions.outputs.ompweb }}
+            CODY_REF=${{ steps.versions.outputs.cody }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/omp:latest
-            ghcr.io/${{ github.repository_owner }}/omp:omp${{ steps.versions.outputs.omp }}-web${{ steps.versions.outputs.ompweb }}
+            ghcr.io/${{ github.repository_owner }}/omp:omp${{ steps.versions.outputs.omp }}-cody${{ steps.versions.outputs.cody_short }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=oh-my-pi coding agent + ompweb browser UI for Unraid
+            org.opencontainers.image.description=oh-my-pi coding agent + Cody browser UI for Unraid
           cache-from: type=gha,scope=omp
           cache-to: type=gha,mode=max,scope=omp

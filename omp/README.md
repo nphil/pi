@@ -1,12 +1,14 @@
 # OMP
 
 [oh-my-pi](https://omp.sh/) (`omp`) — the subagent-and-model-roles fork of pi
-by Can Bölük — with the [ompweb](https://github.com/kahme247/ompweb) browser
-UI, in one container image: `ghcr.io/nphil/omp`.
+by Can Bölük — with the [Cody](https://github.com/nphil/cody) browser UI
+(the ompweb successor), in one container image: `ghcr.io/nphil/omp`.
 
-**This is a sibling of the PI container, not a replacement.** PI (pi + PI WEB)
-keeps running untouched. The two agents share nothing but the llama-swap
-endpoint, and each has its own address, state directory and quota.
+**Cody and omp must share one container**: Cody spawns `omp --mode rpc-ui` as
+a child process over stdio and shares its filesystem (agent dir, workspace),
+so they cannot be split. Cody reads the same `~/.omp/agent` state ompweb
+read; the ompweb → Cody switch (2026-08-16) needed no data migration. The
+one user-visible break: the Basic Auth username changed `omp` → `cody`.
 
 ## Why not just swap pi for omp in the PI container
 
@@ -18,16 +20,16 @@ those three symbols, ships raw TypeScript for Bun rather than compiled JS for
 Node, and installs a binary named `omp` rather than `pi`. Any in-place swap
 kills the browser IDE at startup, not at first use.
 
-ompweb has none of that coupling: it **spawns the `omp` binary as a
-subprocess** (`execFile`, `--mode rpc`, resolved through `OMP_WEB_OMP_BIN`),
-so the agent and the UI version independently.
+Cody (like ompweb before it) has none of that coupling: it **spawns the
+`omp` binary as a subprocess** (`--mode rpc-ui`, NDJSON over stdio, resolved
+through `CODY_OMP_BIN`), so the agent and the UI version independently.
 
 ## Two runtimes, on purpose
 
 | Component | Runtime | Why |
 | --- | --- | --- |
 | `omp` | Bun ≥1.3.14 | `engines.bun`; the package's library entry is raw `.ts` |
-| `ompweb` | Node ≥22.19 | a Next.js app |
+| `cody` | Node ≥22.19 | a Next.js app; not on npm, built from a pinned commit of nphil/cody in the image's first stage |
 
 ## Model roles: what actually routes
 
@@ -87,13 +89,16 @@ per token as *extra usage*, not against plan limits.
 
 ## Updates
 
-`omp-watch-upstream.yml` polls npm every six hours for `@oh-my-pi/pi-coding-agent`
-and `@kahme247/ompweb`, bumps `omp/versions.json`, and dispatches
-`omp-build.yml`, which pushes `:latest` plus an immutable
-`:omp<ver>-web<ver>` tag. Unraid then shows an ordinary update badge; Apply
-Update recreates from the template. omp releases 2-3 times a day, so to pin
-or roll back, set a known-good pair in `versions.json` or point the template
-at an immutable tag.
+`omp-watch-upstream.yml` polls every six hours: npm for
+`@oh-my-pi/pi-coding-agent`, the GitHub API for the HEAD commit of
+`nphil/cody` main (Cody is not on npm). On a change it bumps
+`omp/versions.json` and dispatches `omp-build.yml`, which pushes `:latest`
+plus an immutable `:omp<ver>-cody<sha7>` tag. Unraid then shows an ordinary
+update badge; Apply Update recreates from the template. To pin or roll back,
+set a known-good pair in `versions.json` or point the template at an
+immutable tag. Cody's own repo also publishes `ghcr.io/nphil/cody` on every
+push; nothing on the box consumes that image — this one bundles the sshd,
+toolbox and non-root model that Cody's packaging lacks.
 
 ## Layout
 
@@ -101,7 +106,7 @@ Everything persists under `/data` (a ZFS dataset with a quota on the host):
 
 | Path | What |
 | --- | --- |
-| `/data/home/.omp/agent` | omp state: `models.yml`, `config.yml`, `auth.json`, sessions |
+| `/data/home/.omp/agent` | omp state: `models.yml`, `config.yml`, `auth.json`, sessions; Cody adds `cody-checkpoints/` (shadow repos for restore points, safe to delete) |
 | `/data/home` | HOME for the `omp` user (UID 99), SSH `authorized_keys` |
 | `/data/ssh` | persistent SSH host keys |
 | `/data/workspace` | where the agent works; clone repos here |
@@ -113,10 +118,12 @@ Container plus non-root user is the sandbox: no docker socket, not
 privileged, one quota-capped mount, internal network only. The `omp` user has
 passwordless sudo so agents can install what they need.
 
-**`OMP_WEB_PASSWORD` is effectively required here, not optional.** ompweb
-refuses to bind a non-loopback address without it, and says so plainly:
-`Refusing to listen on 0.0.0.0 without OMP_WEB_PASSWORD.` Since this
-container serves on its own LAN address, an empty password means a
-restart loop rather than an open UI — a better default than PI WEB's, which
-has no auth at all. The username is always `omp`. Basic Auth does not
-encrypt, so keep this on the LAN or tailnet, never public.
+**`CODY_PASSWORD` is required, not optional.** Cody refuses to bind a
+non-loopback address without it (the entrypoint fails fast with a clear
+message rather than leaving a restart loop). Since this container serves on
+its own LAN address, an empty password means no start — a better default
+than PI WEB's, which had no auth at all. The username is always `cody`
+(changed from ompweb's `omp`: update Termius and any saved browser
+credentials). Legacy `OMP_WEB_*` names still work as fallbacks, `CODY_*`
+wins when both are set. Basic Auth does not encrypt, so keep this on the
+LAN or tailnet, never public.
