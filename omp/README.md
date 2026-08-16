@@ -76,6 +76,12 @@ Everything persists under `/data` (a ZFS dataset with a quota on the host):
 
 Container plus non-root user is the sandbox: no docker socket, not
 privileged, one quota-capped mount, internal network only. The `omp` user has
-passwordless sudo so agents can install what they need. Unlike PI WEB, the web
-UI supports real auth: set `OMP_WEB_PASSWORD` (username is always `omp`).
-Basic Auth does not encrypt, so keep it on the LAN or tailnet, never public.
+passwordless sudo so agents can install what they need.
+
+**`OMP_WEB_PASSWORD` is effectively required here, not optional.** ompweb
+refuses to bind a non-loopback address without it, and says so plainly:
+`Refusing to listen on 0.0.0.0 without OMP_WEB_PASSWORD.` Since this
+container serves on its own LAN address, an empty password means a
+restart loop rather than an open UI — a better default than PI WEB's, which
+has no auth at all. The username is always `omp`. Basic Auth does not
+encrypt, so keep this on the LAN or tailnet, never public.
