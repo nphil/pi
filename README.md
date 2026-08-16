@@ -1,10 +1,15 @@
 # PI and OMP
 
-Two self-hosted coding-agent containers for Unraid, built and version-tracked
-here. **PI** is pi + PI WEB (this document). **OMP** is the oh-my-pi fork with
-subagents and model roles, plus the ompweb browser UI, and lives in
-[`omp/`](./omp) with its own image, template and README. They are siblings:
-separate images, addresses, state and quotas.
+Self-hosted coding-agent containers for Unraid, built and version-tracked
+here. **OMP** — the oh-my-pi fork with subagents and model roles, plus the
+ompweb browser UI — is the active one, in [`omp/`](./omp) with its own image,
+template and README.
+
+**PI (pi + PI WEB) was decommissioned on 2026-08-16** after a day of running
+both: OMP's subagents and model roles won. The PI packaging below is kept as
+history (its GHCR images remain pullable, its workflows are deleted so
+nothing rebuilds), and everything it pioneered — the env contract, SSH into
+the TUI, on-boot.sh, the version watcher — lives on in the OMP image.
 
 ## PI
 
